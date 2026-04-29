@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Setup</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 2rem auto; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    label { display:block; margin-top: .5rem; }
+    input, select, textarea { width:100%; padding:.5rem; margin-top:.25rem; }
+    button { margin-top: .75rem; padding: .5rem .8rem; margin-right: .5rem; }
+    pre { background:#f6f8fa; padding:1rem; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Executive Dashboard Setup</h1>
+
+  <section>
+    <h2>1) Link accounts (including Shopify + social)</h2>
+    <label>Display Name <input id="name" placeholder="Ecom Store - Shopify" /></label>
+    <label>Integration Type
+      <select id="type">
+        <option value="shopify">Shopify</option>
+        <option value="meta_ads">Meta Ads</option>
+        <option value="google_ads">Google Ads</option>
+        <option value="linkedin_ads">LinkedIn Ads</option>
+        <option value="salesforce">Salesforce</option>
+        <option value="hubspot">HubSpot</option>
+        <option value="quickbooks">QuickBooks</option>
+        <option value="netsuite">NetSuite</option>
+        <option value="google_sheets">Google Sheets</option>
+        <option value="excel_upload">Excel Upload</option>
+      </select>
+    </label>
+    <label>Account Identifier <input id="account" placeholder="brand-store.myshopify.com" /></label>
+    <button onclick="connectIntegration()">Connect</button>
+    <button onclick="loadIntegrations()">Refresh Connected Sources</button>
+    <pre id="integrations"></pre>
+  </section>
+
+  <section>
+    <h2>2) Source metrics + run sync</h2>
+    <label>Integration ID <input id="integrationId" placeholder="int_1" /></label>
+    <label>Lookback Days <input id="lookback" type="number" value="30" /></label>
+    <button onclick="loadMetrics()">Get Recommended Metrics</button>
+    <button onclick="runSync()">Queue Sync Job</button>
+    <pre id="syncOutput"></pre>
+  </section>
+
+  <section>
+    <h2>3) Customize dashboard</h2>
+    <label>Owner <input id="owner" value="ceo" /></label>
+    <label>Dashboard Name <input id="dashboardName" value="Executive Scorecard" /></label>
+    <label>Refresh (minutes) <input id="refresh" type="number" value="60" /></label>
+    <label>Widgets JSON
+      <textarea id="widgets" rows="8">[
+  {"key":"shopify_net_sales","title":"Net Sales","source":"shopify","chart":"kpi"},
+  {"key":"meta_roas","title":"Meta ROAS","source":"meta_ads","chart":"line"}
+]</textarea>
+    </label>
+    <button onclick="saveDashboard()">Save Dashboard</button>
+    <button onclick="loadDashboard()">Load Dashboard</button>
+    <pre id="dashboard"></pre>
+  </section>
+
+<script>
+const apiBase = 'http://localhost:8000';
+
+async function connectIntegration() {
+  const payload = {
+    name: document.getElementById('name').value,
+    integration_type: document.getElementById('type').value,
+    account_identifier: document.getElementById('account').value,
+  };
+
+  const res = await fetch(`${apiBase}/integrations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  document.getElementById('integrations').textContent = JSON.stringify(data, null, 2);
+}
+
+async function loadIntegrations() {
+  const res = await fetch(`${apiBase}/integrations`);
+  const data = await res.json();
+  document.getElementById('integrations').textContent = JSON.stringify(data, null, 2);
+}
+
+async function loadMetrics() {
+  const integrationId = document.getElementById('integrationId').value;
+  const res = await fetch(`${apiBase}/integrations/${integrationId}/metrics`);
+  const data = await res.json();
+  document.getElementById('syncOutput').textContent = JSON.stringify(data, null, 2);
+}
+
+async function runSync() {
+  const integrationId = document.getElementById('integrationId').value;
+  const payload = { lookback_days: Number(document.getElementById('lookback').value) };
+
+  const res = await fetch(`${apiBase}/integrations/${integrationId}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  document.getElementById('syncOutput').textContent = JSON.stringify(data, null, 2);
+}
+
+async function saveDashboard() {
+  const owner = document.getElementById('owner').value;
+  const payload = {
+    dashboard_name: document.getElementById('dashboardName').value,
+    refresh_minutes: Number(document.getElementById('refresh').value),
+    widgets: JSON.parse(document.getElementById('widgets').value)
+  };
+
+  const res = await fetch(`${apiBase}/dashboard/${owner}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  document.getElementById('dashboard').textContent = JSON.stringify(data, null, 2);
+}
+
+async function loadDashboard() {
+  const owner = document.getElementById('owner').value;
+  const res = await fetch(`${apiBase}/dashboard/${owner}`);
+  const data = await res.json();
+  document.getElementById('dashboard').textContent = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>
